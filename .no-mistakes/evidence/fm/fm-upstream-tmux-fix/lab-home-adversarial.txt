@@ -1,0 +1,14 @@
+== A: tmux with no argument ==
+fm-lab-home: tmux requires a marked lab home
+rc=2
+== B: tmux on an unmarked directory ==
+fm-lab-home: refusing '/tmp/fmu.PPoGOv': not a marked lab home
+rc=1
+== C: tmux before tmux-dir (no private dir recorded) ==
+fm-lab-home: refusing '/tmp/fm-lab.JYyY3x': it has no private tmux directory, so there is no lab server to address
+rc=1
+== D: whole lab home deleted, then tmux kill-server ==
+fm-lab-home: refusing '/tmp/fm-lab.JYyY3x': not a marked lab home
+rc=1
+== E: operator default server still alive ==
+firstmate: 18 windows (created Tue Oct  6 08:31:30 2026)

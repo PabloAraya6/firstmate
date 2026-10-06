@@ -1,0 +1,24 @@
+Tue Oct  6 10:05:37 -03 2026
+== operator default tmux server (read-only) ==
+firstmate: 18 windows (created Tue Oct  6 08:31:30 2026)
+== windows ==
+0: fm-fm-upstream-tmux-fix (1 panes) [80x24] [layout 5966,80x24,0,0,17] @17
+1: fm-pp-canvas-01 (1 panes) [80x24] [layout b25e,80x24,0,0,1] @1
+2: fm-pp-canvas-04 (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2
+3: fm-pp-canvas-05 (1 panes) [80x24] [layout b260,80x24,0,0,3] @3
+4: fm-pp-canvas-06 (1 panes) [80x24] [layout b261,80x24,0,0,4] @4
+5: fm-pp-canvas-09 (1 panes) [80x24] [layout b262,80x24,0,0,5] @5
+6: fm-pp-canvas-10 (1 panes) [80x24] [layout b263,80x24,0,0,6] @6
+7: fm-pp-canvas-12 (1 panes) [80x24] [layout b264,80x24,0,0,7] @7
+8: fm-pp-canvas-17 (1 panes) [80x24] [layout b265,80x24,0,0,8] @8
+9: fm-pp-canvas-18 (1 panes) [80x24] [layout b266,80x24,0,0,9] @9
+10: fm-pp-canvas-24 (1 panes) [80x24] [layout 595f,80x24,0,0,10] @10
+11: fm-pp-canvas-26 (1 panes) [80x24] [layout 5960,80x24,0,0,11] @11
+12: fm-pp-canvas-35 (1 panes) [80x24] [layout 5961,80x24,0,0,12] @12
+13: fm-pp-ola2-l-embeddings (1 panes) [80x24] [layout 5962,80x24,0,0,13] @13
+14: fm-pp-tour-fotos (1 panes) [80x24] [layout 5963,80x24,0,0,14] @14
+15: fm-pp-tour-t05 (1 panes) [80x24] [layout 5964,80x24,0,0,15] @15
+16: fm-pp-tour-t06* (1 panes) [80x24] [layout 5965,80x24,0,0,16] @16 (active)
+17: fm-fm-locale-subshell-sweep (1 panes) [80x24] [layout 5967,80x24,0,0,18] @18
+== server pid ==
+87221

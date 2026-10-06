@@ -1,0 +1,15 @@
+== operator server pid before ==
+87221
+lab private tmux dir: /tmp/fml.l3U6e8
+== start lab session through helper ==
+rc=0
+== private socket on disk ==
+total 0
+srw-------@ 1 pabloco  wheel  0 Oct  6 10:05 default
+== helper addresses lab session ==
+labsession: 1 windows (created Tue Oct  6 10:05:58 2026)
+== kill lab server through helper ==
+rc=0
+== operator server pid after (must be identical, session alive) ==
+87221
+firstmate: 18 windows (created Tue Oct  6 08:31:30 2026)
