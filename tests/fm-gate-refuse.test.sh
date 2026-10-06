@@ -245,6 +245,49 @@ test_lab_home_private_tmux_socket_survives_deep_paths() {
   pass "fm-lab-home: a primary starts on a private short tmux socket from a long lab path and teardown removes it"
 }
 
+# With no private directory, before tmux-dir mints it or after teardown removes
+# it, a lab tmux call must refuse without running tmux: tmux treats a missing
+# TMUX_TMPDIR as absent and falls back to /tmp/tmux-<uid>, the operator's own
+# default server. While it exists, the call reaches only the lab's server, even
+# from a shell whose inherited TMUX names the operator's.
+test_lab_home_tmux_reaches_only_the_private_server() (
+  local lab spy operator socket pid socket_dir out rc
+  command -v tmux >/dev/null 2>&1 || { pass "fm-lab-home tmux skipped: tmux is not installed"; exit 0; }
+  lab=$("$LABHOME" create "$TMP/lab-tmux") || fail "could not create the lab home"
+  spy="$TMP/lab-tmux-spy"
+  mkdir -p "$spy"
+  printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "%s/calls"\n' "$spy" > "$spy/tmux"
+  chmod +x "$spy/tmux"
+  operator=$(mktemp -d /tmp/fmo.XXXXXX) || fail "could not create the stand-in operator socket directory"
+  socket="$operator/default"
+  trap '"$LABHOME" tmux "$lab" kill-server 2>/dev/null; tmux -S "$socket" kill-server 2>/dev/null; rm -rf "$operator"' EXIT
+  tmux -S "$socket" -f /dev/null new-session -d -s firstmate 'exec sleep 600' \
+    || fail "could not start the stand-in operator tmux server"
+  pid=$(tmux -S "$socket" display-message -p -t =firstmate '#{pid}')
+  export TMUX="$socket,$pid,0"
+
+  out=$(PATH="$spy:$PATH" "$LABHOME" tmux "$lab" kill-server 2>&1); rc=$?
+  [ "$rc" -ne 0 ] || fail "fm-lab-home tmux: a lab with no private directory must refuse"
+  [ ! -e "$spy/calls" ] || fail "fm-lab-home tmux: a refused call still ran tmux $(cat "$spy/calls")"
+
+  socket_dir=$("$LABHOME" tmux-dir "$lab") || fail "could not create the lab's private tmux directory"
+  "$LABHOME" tmux "$lab" -f /dev/null new-session -d -s primary 'exec sleep 60' \
+    || fail "fm-lab-home tmux: could not start the lab server"
+  [ -S "$socket_dir/tmux-$(id -u)/default" ] || fail "fm-lab-home tmux: the lab server is not on the private socket"
+  "$LABHOME" tmux "$lab" has-session -t =primary || fail "fm-lab-home tmux: the lab session is not reachable"
+  "$LABHOME" tmux "$lab" kill-server || fail "fm-lab-home tmux: could not stop the lab server"
+  tmux -S "$socket" has-session -t =firstmate 2>/dev/null \
+    || fail "fm-lab-home tmux: stopping the lab server stopped the inherited operator server"
+  "$LABHOME" teardown "$lab" || fail "lab tmux directory teardown failed"
+
+  out=$(PATH="$spy:$PATH" "$LABHOME" tmux "$lab" kill-server 2>&1); rc=$?
+  [ "$rc" -ne 0 ] || fail "fm-lab-home tmux: a lab whose private directory was removed must refuse"
+  [ ! -e "$spy/calls" ] || fail "fm-lab-home tmux: a call after teardown still ran tmux $(cat "$spy/calls")"
+  tmux -S "$socket" has-session -t =firstmate 2>/dev/null \
+    || fail "fm-lab-home tmux: a call after teardown stopped the inherited operator server"
+  pass "fm-lab-home tmux reaches only the lab's private server and refuses once no private directory exists"
+)
+
 test_lab_home_helper() {
   local lab populated unlistable newline out rc
   # create on an absent path mints the marker and the stock layout.
@@ -533,6 +576,7 @@ test_helper_normal_is_noop
 test_helper_lab_home_admits
 test_lab_home_helper
 test_lab_home_private_tmux_socket_survives_deep_paths
+test_lab_home_tmux_reaches_only_the_private_server || fail "fm-lab-home tmux addressing"
 test_spawn_refuses_and_admits
 test_send_refuses_and_admits
 test_teardown_refuses_and_admits
