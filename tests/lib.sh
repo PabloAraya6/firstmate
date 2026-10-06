@@ -250,14 +250,20 @@ fm_test_remove_tree() {
   rm -rf "$dir"
 }
 
-# Stop every server in the private tmux socket directory this suite minted (see
-# below), then remove it. A nested suite that inherited it leaves it to its owner.
-fm_test_release_tmux() {
+# Stop every tmux server listening in a private socket directory (see below).
+fm_test_kill_tmux_servers() {  # <tmux-tmpdir>
   local socket
-  [ -n "${FM_TEST_TMUX_TMPDIR:-}" ] && [ "${FM_TEST_TMUX_OWNER:-}" = "$$" ] || return 0
-  for socket in "$FM_TEST_TMUX_TMPDIR"/tmux-*/*; do
+  for socket in "$1"/tmux-*/*; do
     [ -S "$socket" ] && tmux -S "$socket" kill-server >/dev/null 2>&1
   done
+  return 0
+}
+
+# Release the private tmux socket directory this suite minted. A nested suite
+# that inherited it leaves it to its owner.
+fm_test_release_tmux() {
+  [ -n "${FM_TEST_TMUX_TMPDIR:-}" ] && [ "${FM_TEST_TMUX_OWNER:-}" = "$$" ] || return 0
+  fm_test_kill_tmux_servers "$FM_TEST_TMUX_TMPDIR"
   rm -rf "$FM_TEST_TMUX_TMPDIR"
 }
 
@@ -305,10 +311,13 @@ trap 'fm_test_cleanup; exit 131' QUIT
 # each suite drops that identity and gets a private TMUX_TMPDIR its children
 # inherit; a nested suite keeps its parent's directory and any TMUX the parent
 # set. A lab's server is addressed through bin/fm-lab-home.sh tmux instead,
-# whose header says why TMUX_TMPDIR alone is not enough.
+# whose header says why TMUX_TMPDIR alone is not enough. The directory sits in
+# /tmp to keep socket paths short, and carries the fixture marker so the orphan
+# sweep below reaps it when a suite's own EXIT trap skips fm_test_cleanup.
 if [ -z "${FM_TEST_TMUX_TMPDIR:-}" ] || [ ! -d "$FM_TEST_TMUX_TMPDIR" ]; then
   unset TMUX TMUX_PANE
   FM_TEST_TMUX_TMPDIR=$(mktemp -d /tmp/fmt.XXXXXX) || return 1
+  printf '%s\n%s\n' "$$" "$FM_TEST_OWNER_IDENTITY" > "$FM_TEST_TMUX_TMPDIR/.fm-test-fixture" || return 1
   FM_TEST_TMUX_OWNER=$$
   export FM_TEST_TMUX_TMPDIR
   export TMUX_TMPDIR="$FM_TEST_TMUX_TMPDIR"
@@ -326,7 +335,7 @@ FM_TEST_ORPHAN_MAX_AGE_SECONDS=${FM_TEST_ORPHAN_MAX_AGE_SECONDS:-3600}
 fm_test_reap_orphans() {
   local marker dir mtime now owner_pid owner_identity current_identity
   now=$(date +%s)
-  for marker in "$FM_TEST_TMPDIR"/fm-*/.fm-test-fixture; do
+  for marker in "$FM_TEST_TMPDIR"/fm-*/.fm-test-fixture /tmp/fmt.*/.fm-test-fixture; do
     [ -e "$marker" ] || continue
     owner_pid=$(sed -n '1p' "$marker" 2>/dev/null) || owner_pid=
     owner_identity=$(sed -n '2,$p' "$marker" 2>/dev/null) || owner_identity=
@@ -342,6 +351,7 @@ fm_test_reap_orphans() {
     mtime=$(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null) || continue
     [ $((now - mtime)) -ge "$FM_TEST_ORPHAN_MAX_AGE_SECONDS" ] || continue
     dir=$(dirname "$marker")
+    fm_test_kill_tmux_servers "$dir"
     fm_test_remove_tree "$dir"
   done
 }
