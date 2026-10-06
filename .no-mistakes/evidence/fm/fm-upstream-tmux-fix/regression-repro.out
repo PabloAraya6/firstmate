@@ -1,0 +1,6 @@
+== BEFORE FIX: suite inherits operator TMUX, private dir gone, bare tmux kill-server ==
+REPRODUCED: with inherited TMUX and no private dir, kill-server killed the operator server
+
+== AFTER FIX: tests/lib.sh drops the inherited TMUX, same bare kill-server ==
+error connecting to /private/tmp/fmt.PXuRwp/tmux-501/default (No such file or directory)
+PASS: fixed lib.sh protected the inherited operator server

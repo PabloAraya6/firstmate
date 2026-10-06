@@ -1,0 +1,21 @@
+operator server pid=25309 sessions=       1
+
+== A. suite inherits operator TMUX/TMUX_PANE, then runs bare tmux kill-server ==
+error connecting to /private/tmp/fmt.fP5p0G/tmux-501/default (No such file or directory)
+PASS: operator server survived the suite's bare kill-server
+
+== B. fm-lab-home.sh tmux refuses with no private dir (before tmux-dir) ==
+fm-lab-home: refusing '/tmp/fm-manual.ak6IHd/labB': it has no private tmux directory, so there is no lab server to address
+exit=1
+PASS: refused and operator server intact
+
+== C. fm-lab-home.sh tmux reaches only the lab server ==
+lab socket dir=/tmp/fml.TSzz97
+PASS: reached only the lab server; operator server intact
+
+== D. the reported failure: cleanup kill-server after the private dir is gone ==
+fm-lab-home: recorded tmux directory is missing or unsafe
+exit=1
+PASS: refused after the private dir vanished; operator server intact
+
+ALL MANUAL SCENARIOS PASSED
