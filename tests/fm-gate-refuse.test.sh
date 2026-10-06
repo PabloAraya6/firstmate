@@ -187,8 +187,7 @@ test_helper_lab_home_admits() {
 
 test_lab_home_private_tmux_socket_survives_deep_paths() {
   local root=$TMP/deep lab socket_dir ready socket_path depth=0
-  local real_tmux
-  real_tmux=$(command -v tmux) || fail "tmux is required for the lab socket behavioral test"
+  command -v tmux >/dev/null 2>&1 || fail "tmux is required for the lab socket behavioral test"
   while [ "${#root}" -le 150 ]; do
     root="$root/long-directory-segment"
     depth=$((depth + 1))
@@ -197,7 +196,7 @@ test_lab_home_private_tmux_socket_survives_deep_paths() {
   lab="$root/lab-home"
   lab=$("$LABHOME" create "$lab") || fail "could not create lab home under a long path"
   socket_dir=$("$LABHOME" tmux-dir "$lab") || fail "could not create the lab's private tmux directory"
-  socket_path="$socket_dir/tmux-$(id -u)/fm-lab"
+  socket_path="$socket_dir/tmux-$(id -u)/default"
   ready="$lab/state/primary-started"
   [ "${#lab}" -gt 120 ] || fail "lab path was not deliberately long enough"
   [ "${#socket_path}" -lt 60 ] || fail "tmux socket path is not short: $socket_path"
@@ -211,26 +210,26 @@ test_lab_home_private_tmux_socket_survives_deep_paths() {
   [ "${socket_dir#/tmp/fml.}" != "$socket_dir" ] || fail "socket directory is not under the short /tmp/fml prefix"
 
   cleanup_deep_lab() {
-    env TMUX_TMPDIR="$socket_dir" "$real_tmux" -L fm-lab kill-server >/dev/null 2>&1 || true
+    "$LABHOME" tmux "$lab" kill-server >/dev/null 2>&1 || true
     "$LABHOME" teardown "$lab" >/dev/null 2>&1 || true
     fm_test_cleanup
   }
   trap cleanup_deep_lab EXIT
   # shellcheck disable=SC2016 # The fake primary expands $1 in its own sh process.
-  env TMUX_TMPDIR="$socket_dir" "$real_tmux" -L fm-lab -f /dev/null new-session -d -s primary \
+  "$LABHOME" tmux "$lab" -f /dev/null new-session -d -s primary \
     /bin/sh -c 'printf started > "$1"; exec sleep 60' sh "$ready" \
     || fail "tmux could not start the fake primary through the lab socket"
   [ -S "$socket_path" ] || fail "tmux did not create its socket in the private short directory"
   local attempts=0
   while [ ! -f "$ready" ] && [ "$attempts" -lt 20 ]; do sleep 0.05; attempts=$((attempts + 1)); done
   [ -f "$ready" ] || fail "fake primary did not start"
-  env TMUX_TMPDIR="$socket_dir" "$real_tmux" -L fm-lab has-session -t primary \
-    || fail "primary session is not reachable through the lab's TMUX_TMPDIR"
+  "$LABHOME" tmux "$lab" has-session -t primary \
+    || fail "primary session is not reachable through the lab's private socket"
   if "$LABHOME" teardown "$lab" >/dev/null 2>&1; then
     fail "lab teardown removed the directory while its server was running"
   fi
   [ -d "$socket_dir" ] || fail "refused active-server teardown removed the socket directory"
-  env TMUX_TMPDIR="$socket_dir" "$real_tmux" -L fm-lab kill-server \
+  "$LABHOME" tmux "$lab" kill-server \
     || fail "could not stop the isolated lab tmux server"
   mkdir -p "$TMP/failing-tmux-bin"
   printf '#!/bin/sh\necho "tmux: probe failed" >&2\nexit 1\n' > "$TMP/failing-tmux-bin/tmux"

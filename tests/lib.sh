@@ -250,8 +250,20 @@ fm_test_remove_tree() {
   rm -rf "$dir"
 }
 
+# Stop every server in the private tmux socket directory this suite minted (see
+# below), then remove it. A nested suite that inherited it leaves it to its owner.
+fm_test_release_tmux() {
+  local socket
+  [ -n "${FM_TEST_TMUX_TMPDIR:-}" ] && [ "${FM_TEST_TMUX_OWNER:-}" = "$$" ] || return 0
+  for socket in "$FM_TEST_TMUX_TMPDIR"/tmux-*/*; do
+    [ -S "$socket" ] && tmux -S "$socket" kill-server >/dev/null 2>&1
+  done
+  rm -rf "$FM_TEST_TMUX_TMPDIR"
+}
+
 fm_test_cleanup() {
   local d
+  fm_test_release_tmux
   fm_test_reap_watchers
   fm_test_reap_procevent_homes
   for d in "${FM_TEST_CLEANUP_DIRS[@]:-}"; do
@@ -284,6 +296,23 @@ trap 'fm_test_cleanup; exit 130' INT
 trap 'fm_test_cleanup; exit 143' TERM
 trap 'fm_test_cleanup; exit 129' HUP
 trap 'fm_test_cleanup; exit 131' QUIT
+
+# --- private tmux socket directory -------------------------------------------
+#
+# A suite never addresses the operator's own tmux server, where every live
+# worker runs: one started from a worker's pane inherits TMUX and TMUX_PANE
+# naming it, and with TMUX unset the default socket directory reaches it. So
+# each suite drops that identity and gets a private TMUX_TMPDIR its children
+# inherit; a nested suite keeps its parent's directory and any TMUX the parent
+# set. A lab's server is addressed through bin/fm-lab-home.sh tmux instead,
+# whose header says why TMUX_TMPDIR alone is not enough.
+if [ -z "${FM_TEST_TMUX_TMPDIR:-}" ] || [ ! -d "$FM_TEST_TMUX_TMPDIR" ]; then
+  unset TMUX TMUX_PANE
+  FM_TEST_TMUX_TMPDIR=$(mktemp -d /tmp/fmt.XXXXXX) || return 1
+  FM_TEST_TMUX_OWNER=$$
+  export FM_TEST_TMUX_TMPDIR
+  export TMUX_TMPDIR="$FM_TEST_TMUX_TMPDIR"
+fi
 
 # fm_test_reap_orphans: best-effort sweep for fixture roots left behind by a
 # prior run that was killed hard enough to skip the traps above (e.g. a
