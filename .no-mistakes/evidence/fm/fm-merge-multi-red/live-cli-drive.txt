@@ -1,0 +1,37 @@
+# Live CLI drive: bin/fm-pr-merge.sh repeated --allow-red
+# worktree: /Users/pabloco/.no-mistakes/worktrees/a09ae54b258e/01M5FVPYXZQ7ZA2SBVDRAKN3CJ
+# base commit: 83b70ef49e33eff529f574618415997c8ef67518
+# target commit: cea2ecbe9cdb9c5fa6864ab1dc47dfc4a45f3de0
+
+=== BEFORE (base commit script) ===
+## baseline: captain names three red checks, one --allow-red each
+$ /var/folders/5d/l1y_xpzj1sq0v29ndtp9d8pw0000gn/T//fm-base.MQ0qFO/bin/fm-pr-merge.sh task-x1 https://github.com/example/repo/pull/88 --allow-red check --allow-red metrics --allow-red react-doctor
+rc=2
+error: --allow-red may be specified only once
+
+=== AFTER (current script) ===
+## three repeated --allow-red parse and reach the next gate (no 'only once')
+$ bin/fm-pr-merge.sh task-x1 https://github.com/example/repo/pull/88 --allow-red check --allow-red metrics --allow-red react-doctor
+rc=1
+error: PR merge refused: state directory is not a real directory at /var/folders/5d/l1y_xpzj1sq0v29ndtp9d8pw0000gn/T//fm-live.aHMC7Z/state
+
+## = form still refused
+$ bin/fm-pr-merge.sh task-x1 https://github.com/example/repo/pull/88 --allow-red=check
+rc=2
+error: --allow-red requires a separate check name argument
+
+## valueless --allow-red still refused
+$ bin/fm-pr-merge.sh task-x1 https://github.com/example/repo/pull/88 --allow-red
+rc=2
+error: --allow-red requires a check name
+
+## --allow-missing stays single-use (unchanged boundary)
+$ bin/fm-pr-merge.sh task-x1 https://github.com/example/repo/pull/88 --allow-missing check --allow-missing metrics
+rc=2
+error: --allow-missing may be specified only once
+
+## repeated --allow-red still refused on GitLab (unchanged boundary)
+$ bin/fm-pr-merge.sh task-x1 https://gitlab.example/group/subgroup/project/-/merge_requests/7 --allow-red check --allow-red metrics --allow-red react-doctor
+rc=2
+error: --allow-red does not apply to GitLab, where a merge already requires the head pipeline to have succeeded; --allow-no-pipeline waives only a merge request with no head pipeline at all
+
