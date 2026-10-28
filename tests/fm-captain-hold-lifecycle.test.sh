@@ -737,13 +737,28 @@ test_completion_gate_accepts_an_answered_and_archived_hold() {
 
   run_captain "$home" verify "$scout" >/dev/null 2> "$home/verify.err" \
     || fail "verify refused an answered and archived captain call: $(cat "$home/verify.err")"
-  run_captain "$home" complete "$scout" >/dev/null 2> "$home/complete.err" \
+  run_captain "$home" complete "$scout" "$key" >/dev/null 2> "$home/complete.err" \
     || fail "complete refused an answered and archived captain call: $(cat "$home/complete.err")"
   assert_grep "decision_keys=$key" "$home/state/$scout.meta" "complete dropped the archived attestation"
 
+  run_teardown "$home" "$scout" >/dev/null 2> "$home/teardown.err" \
+    || fail "teardown refused a scout whose captain call was answered and archived: $(cat "$home/teardown.err")"
+
   write_scout_with_attested_inventory "$home" "$scout" "sample-archived-cal"
-  if run_captain "$home" verify "$scout" >/dev/null 2>&1; then
+  if run_captain "$home" verify "$scout" >/dev/null 2> "$home/typo.err"; then
     fail "verify accepted an attested entry that names no task"
+  fi
+  assert_grep "no captain-held task sample-archived-cal" "$home/typo.err" \
+    "verify did not name the entry that resolves to nothing"
+
+  tasks_in "$home" add sample-unanswered-call "Closed without an answer" --repo sample >/dev/null \
+    || fail "could not create the unanswered fixture"
+  tasks_in "$home" "done" sample-unanswered-call --keep 0 >/dev/null \
+    || fail "could not archive the unanswered fixture"
+  assert_grep "sample-unanswered-call" "$home/data/done-archive.md" "the unanswered row was not archived"
+  write_scout_with_attested_inventory "$home" "$scout" sample-unanswered-call
+  if run_captain "$home" verify "$scout" >/dev/null 2>&1; then
+    fail "verify accepted an archived row that carries no recorded captain answer"
   fi
   pass "the completion gate treats an answered and archived captain call as settled"
 }

@@ -115,6 +115,7 @@ Scout teardown calls the read-only `verify` subcommand after checking for the re
 
 - The recorded attestation exists.
 - Every recorded inventory entry is still durable: actively captain-held, or carrying a recorded answer.
+  On the markdown backend, an answered row that Done retention already moved into the configured archive still counts, because its archived body keeps the recorded answer; an entry with no such row is still refused.
 - No keyed status decision opened after the last `complete`.
 
 A keyed status decision opened after the last `complete` makes `verify` fail, and re-running `complete` is the repair.
@@ -514,6 +515,7 @@ The suite does not test the accepted merge-to-cleanup re-hold window or asynchro
 - A report-only unresolved captain call refuses `--none` completion before teardown can erase the source.
 - Non-forced scout teardown always requires the durable inventory verification.
 - The recorded-answer guard holds: a bare `tasks-axi done` close fails `verify` until `answer` records the captain's word, and an ordinary finished task cannot be dressed up as an answered call.
+- An answered call that Done retention archived passes `verify`, `complete`, and scout teardown, while an archived row without a recorded answer and an entry that names no row are refused.
 
 ### Answers, stamps, and deferral
 
