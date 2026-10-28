@@ -710,10 +710,6 @@ EOF
   pass "report-only unresolved captain call is reproduced and completion refuses before loss"
 }
 
-# The completion gate on the collapsed primitive: an origin with open keyed
-# status decisions refuses --none, refuses an inventory naming absent tasks,
-# attests a verified inventory of captain-held task ids, and transfers every
-# still-open status decision to that durable inventory.
 # A captain call answered and closed is settled even after Done retention moves
 # its row into the archive, so the gate that re-reads a scout's attested
 # inventory must not refuse it there; an entry that never existed still must.
@@ -750,6 +746,9 @@ test_completion_gate_accepts_an_answered_and_archived_hold() {
   fi
   assert_grep "no captain-held task sample-archived-cal" "$home/typo.err" \
     "verify did not name the entry that resolves to nothing"
+  if run_captain "$home" complete "$scout" sample-archived-cal >/dev/null 2>&1; then
+    fail "complete accepted an inventory entry that names no task"
+  fi
 
   tasks_in "$home" add sample-unanswered-call "Closed without an answer" --repo sample >/dev/null \
     || fail "could not create the unanswered fixture"
@@ -763,6 +762,10 @@ test_completion_gate_accepts_an_answered_and_archived_hold() {
   pass "the completion gate treats an answered and archived captain call as settled"
 }
 
+# The completion gate on the collapsed primitive: an origin with open keyed
+# status decisions refuses --none, refuses an inventory naming absent tasks,
+# attests a verified inventory of captain-held task ids, and transfers every
+# still-open status decision to that durable inventory.
 test_completion_gate_attests_and_transfers() {
   local home id json open before after
   home=$(make_home completion-gate)
