@@ -714,6 +714,40 @@ EOF
 # status decisions refuses --none, refuses an inventory naming absent tasks,
 # attests a verified inventory of captain-held task ids, and transfers every
 # still-open status decision to that durable inventory.
+# A captain call answered and closed is settled even after Done retention moves
+# its row into the archive, so the gate that re-reads a scout's attested
+# inventory must not refuse it there; an entry that never existed still must.
+test_completion_gate_accepts_an_answered_and_archived_hold() {
+  local home scout key
+  home=$(make_home answered-archived)
+  scout=sample-archived-scout
+  key=sample-archived-call
+  tasks_in "$home" add "$scout" "Investigate archived call" --kind scout --repo sample --start >/dev/null \
+    || fail "could not create the archived-call scout fixture"
+  write_scout_with_attested_inventory "$home" "$scout" "$key"
+  run_captain "$home" hold "$key" --title "Choose archived option" \
+    --reason "captain option pending" --repo sample --origin "$scout" >/dev/null \
+    || fail "could not hold the archived-call fixture"
+  printf 'Option A.\n' > "$home/archived-answer.txt"
+  run_captain "$home" answer "$key" --decision-file "$home/archived-answer.txt" >/dev/null \
+    || fail "could not answer the archived-call fixture"
+  tasks_in "$home" prune --keep 0 >/dev/null || fail "could not archive the answered hold"
+  assert_no_grep "$key" "$home/data/backlog.md" "the answered hold was not archived"
+  assert_grep "$key" "$home/data/done-archive.md" "the answered hold is missing from the archive"
+
+  run_captain "$home" verify "$scout" >/dev/null 2> "$home/verify.err" \
+    || fail "verify refused an answered and archived captain call: $(cat "$home/verify.err")"
+  run_captain "$home" complete "$scout" >/dev/null 2> "$home/complete.err" \
+    || fail "complete refused an answered and archived captain call: $(cat "$home/complete.err")"
+  assert_grep "decision_keys=$key" "$home/state/$scout.meta" "complete dropped the archived attestation"
+
+  write_scout_with_attested_inventory "$home" "$scout" "sample-archived-cal"
+  if run_captain "$home" verify "$scout" >/dev/null 2>&1; then
+    fail "verify accepted an attested entry that names no task"
+  fi
+  pass "the completion gate treats an answered and archived captain call as settled"
+}
+
 test_completion_gate_attests_and_transfers() {
   local home id json open before after
   home=$(make_home completion-gate)
@@ -4087,3 +4121,4 @@ test_verify_names_the_unresolvable_legacy_id_once
 test_verify_resolves_a_pre_collapse_key_through_its_derived_marker
 test_captain_hold_mutations_address_the_beads_backend
 test_hold_creates_a_captain_row_when_beads_requires_due_without_custom_type
+test_completion_gate_accepts_an_answered_and_archived_hold
